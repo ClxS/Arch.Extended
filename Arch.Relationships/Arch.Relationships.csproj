@@ -31,7 +31,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Arch" Version="1.2.6.6-alpha" />
+      <ProjectReference Include="..\..\Arch\src\Arch\Arch.csproj" />
     </ItemGroup>
 
 </Project>
