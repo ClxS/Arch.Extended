@@ -114,7 +114,7 @@ public static class QueryUtils
         foreach (var parameter in parameterSymbols)
         {
             if (parameter.GetAttributes().Any(attributeData => attributeData.AttributeClass.Name.Contains("Data")))
-                sb.AppendLine($"public {CommonUtils.RefKindToString(parameter.RefKind)} {parameter.Type} @{parameter.Name.ToLower()};");
+                sb.AppendLine($"public {parameter.Type} @{parameter.Name.ToLower()};");
         }
         return sb;
     }
@@ -292,7 +292,7 @@ public static class QueryUtils
             using Arch.Core.Extensions;
             using Arch.Core.Utils;
             using ArrayExtensions = CommunityToolkit.HighPerformance.ArrayExtensions;
-            using Component = Arch.Core.Utils.Component;
+            using Component = Arch.Core.Component;
             {{(!queryMethod.IsGlobalNamespace ? $"namespace {queryMethod.Namespace} {{" : "")}}
                 partial class {{queryMethod.ClassName}}{
                     
@@ -304,7 +304,7 @@ public static class QueryUtils
                     );
 
                     private {{staticModifier}} World? _{{queryMethod.MethodName}}_Initialized;
-                    private {{staticModifier}} Query _{{queryMethod.MethodName}}_Query;
+                    private {{staticModifier}} Query? _{{queryMethod.MethodName}}_Query;
 
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public {{staticModifier}} void {{queryMethod.MethodName}}Query(World world {{data}}){
@@ -368,7 +368,7 @@ public static class QueryUtils
             using Arch.Core.Extensions;
             using Arch.Core.Utils;
             using ArrayExtensions = CommunityToolkit.HighPerformance.ArrayExtensions;
-            using Component = Arch.Core.Utils.Component;
+            using Component = Arch.Core.Component;
             {{(!queryMethod.IsGlobalNamespace ? $"namespace {queryMethod.Namespace} {{" : "")}}
                 partial class {{queryMethod.ClassName}}{
                     
@@ -380,7 +380,7 @@ public static class QueryUtils
                     );
 
                     private {{staticModifier}} World? _{{queryMethod.MethodName}}_Initialized;
-                    private {{staticModifier}} Query _{{queryMethod.MethodName}}_Query;
+                    private {{staticModifier}} Query? _{{queryMethod.MethodName}}_Query;
 
                     private struct {{queryMethod.MethodName}}QueryJobChunk : IChunkJob 
                     {
@@ -438,7 +438,7 @@ public static class QueryUtils
         while (type != null)
         {
             // Update was implemented by user, no need to do that by source generator.
-            if (type.MemberNames.Contains("Update"))
+            if (type.GetMembers("Update").OfType<IMethodSymbol>().Any(member => member.IsOverride))
                 implementsUpdate = true;
 
             type = type.BaseType;
