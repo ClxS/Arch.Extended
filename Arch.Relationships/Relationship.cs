@@ -7,7 +7,7 @@ namespace Arch.Relationships;
 ///     The <see cref="IRelationship"/> interface
 ///     is an interface that provides all methods required to act as a relationship.
 /// </summary>
-internal interface IRelationship
+public interface IRelationship
 {
     /// <summary>
     ///     The amount of relationships currently in the buffer.
