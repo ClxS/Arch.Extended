@@ -157,8 +157,7 @@ public static class QueryUtils
             foreach (var parameter in method.Parameters)
             {
                 if (!parameter.GetAttributes().Any(attributeData => attributeData.AttributeClass.Name.Contains("Data"))) continue;
-                data.Append($"{CommonUtils.RefKindToString(parameter.RefKind)} data,");
-                break;
+                data.Append($"{CommonUtils.RefKindToString(parameter.RefKind)} this.{parameter.Name},");
             }
             data.Length--;
             sb.AppendLine($"{method.Name}Query(World {data});");   
