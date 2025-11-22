@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using Arch.Core;
 
 namespace Arch.Relationships;
@@ -9,6 +10,11 @@ namespace Arch.Relationships;
 /// </summary>
 public interface IRelationship
 {
+    /// <summary>
+    /// Gets a generic dictionary for the elements of this relationship.
+    /// </summary>
+    IDictionary GenericElements { get; }
+    
     /// <summary>
     ///     The amount of relationships currently in the buffer.
     /// </summary>
@@ -44,7 +50,7 @@ public class Relationship<T> : IRelationship
     /// <summary>
     ///     Its relations. 
     /// </summary>
-    internal readonly SortedList<Entity, T> Elements;
+    public readonly SortedList<Entity, T> Elements;
 
     /// <summary>
     ///     Initializes a new instance of an <see cref="Relationship{T}"/>.
@@ -64,7 +70,10 @@ public class Relationship<T> : IRelationship
     {
         Elements = elements;
     }
-    
+
+    /// <inheritdoc/>
+    public IDictionary GenericElements => Elements;
+
     /// <inheritdoc/>
     int IRelationship.Count
     {
