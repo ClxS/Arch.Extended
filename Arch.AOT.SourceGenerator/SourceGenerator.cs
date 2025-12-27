@@ -28,7 +28,7 @@ public sealed class ComponentRegistryGenerator : IIncrementalGenerator
 	                                         namespace Arch.AOT.SourceGenerator
 	                                         {
 	                                             [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-	                                             public sealed class ComponentAttribute : Attribute { }
+	                                             internal sealed class ComponentAttribute : Attribute { }
 	                                         }
 	                                         """;
 	public void Initialize(IncrementalGeneratorInitializationContext context)

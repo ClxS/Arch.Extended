@@ -250,6 +250,7 @@ public static class QueryUtils
             EntityParameter = entityParam,
             Parameters = methodSymbol.Parameters,
             Components = components,
+            ReturnType = methodSymbol.ReturnType,
             
             AllFilteredTypes = allArray,
             AnyFilteredTypes = anyArray,
@@ -280,6 +281,26 @@ public static class QueryUtils
         var anyTypeArray = new StringBuilder().GetTypeArray(queryMethod.AnyFilteredTypes);
         var noneTypeArray = new StringBuilder().GetTypeArray(queryMethod.NoneFilteredTypes);
         var exclusiveTypeArray = new StringBuilder().GetTypeArray(queryMethod.ExclusiveFilteredTypes);
+
+        bool hasMutation = queryMethod.ReturnType.Name == "QueryMutationResult";
+        string callHandle;
+        if (hasMutation)
+        {
+            StringBuilder updatedProps = InsertNotificationEventParams(queryMethod.Parameters);
+            callHandle = $$"""
+                                QueryMutationResult result = {{queryMethod.MethodName}}({{insertParams}});
+                                if (result == QueryMutationResult.Mutation)
+                                {
+                                    {{updatedProps}}
+                                }
+            """;
+        }
+        else
+        {
+            callHandle = $"""
+                                {queryMethod.MethodName}({insertParams});
+            """;
+        }
 
         var template = 
             $$"""
@@ -315,14 +336,14 @@ public static class QueryUtils
 
                         foreach(ref var chunk in _{{queryMethod.MethodName}}_Query){
                             
-                            {{(queryMethod.IsEntityQuery ? "ref var entityFirstElement = ref chunk.Entity(0);" : "")}}
+                            {{((hasMutation || queryMethod.IsEntityQuery) ? "ref var entityFirstElement = ref chunk.Entity(0);" : "")}}
                             {{getFirstElements}}
 
                             foreach(var entityIndex in chunk)
                             {
-                                {{(queryMethod.IsEntityQuery ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
+                                {{((hasMutation || queryMethod.IsEntityQuery) ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
                                 {{getComponents}}
-                                {{queryMethod.MethodName}}({{insertParams}});
+                                {{callHandle}}
                             }
                         }
                     }
@@ -357,6 +378,26 @@ public static class QueryUtils
         var noneTypeArray = new StringBuilder().GetTypeArray(queryMethod.NoneFilteredTypes);
         var exclusiveTypeArray = new StringBuilder().GetTypeArray(queryMethod.ExclusiveFilteredTypes);
 
+        bool hasMutation = queryMethod.ReturnType.Name == "QueryMutationResult";
+        string callHandle;
+        if (hasMutation)
+        {
+            StringBuilder updatedProps = InsertNotificationEventParams(queryMethod.Parameters);
+            callHandle = $$"""
+                                               QueryMutationResult result = {{queryMethod.MethodName}}({{insertParams}});
+                                               if (result == QueryMutationResult.Mutation)
+                                               {
+                           {{updatedProps}}
+                                               }
+                           """;
+        }
+        else
+        {
+            callHandle = $"""
+                                              {queryMethod.MethodName}({insertParams});
+                          """;
+        }
+        
         var template = 
             $$"""
             #nullable enable
@@ -381,7 +422,7 @@ public static class QueryUtils
                     private {{staticModifier}} World? _{{queryMethod.MethodName}}_Initialized;
                     private {{staticModifier}} Query? _{{queryMethod.MethodName}}_Query;
 
-                    private struct {{queryMethod.MethodName}}QueryJobChunk : IChunkJob 
+                    private struct {{queryMethod.MethodName}}QueryJobChunk(World world) : IChunkJob 
                     {
                         {{jobParameters}}
                         
@@ -394,7 +435,7 @@ public static class QueryUtils
                             {
                                 {{(queryMethod.IsEntityQuery ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
                                 {{getComponents}}
-                                {{queryMethod.MethodName}}({{insertParams}});
+                                {{callHandle}}
                             }
                         }
                     }
@@ -407,7 +448,7 @@ public static class QueryUtils
                             _{{queryMethod.MethodName}}_Initialized = world;
                         }
                         
-                        var job = new {{queryMethod.MethodName}}QueryJobChunk() { {{jobParametersAssigment}} };
+                        var job = new {{queryMethod.MethodName}}QueryJobChunk(world) { {{jobParametersAssigment}} };
                         world.InlineParallelChunkQuery(in {{queryMethod.MethodName}}_QueryDescription, job);
                     }
                 }
@@ -495,5 +536,23 @@ public static class QueryUtils
             {{(baseSystem.Namespace != string.Empty ? "}" : "")}}
             """;
         return sb.Append(template);
+    }
+    
+    private static StringBuilder InsertNotificationEventParams(IEnumerable<IParameterSymbol> parameterSymbols)
+    {
+        StringBuilder sb = new();
+        foreach (IParameterSymbol? symbol in parameterSymbols)
+        {
+            if (symbol.RefKind != RefKind.Ref)
+            {
+                continue;
+            }
+
+            string typeName = symbol.Type.ToDisplayString(NullableFlowState.None,
+                SymbolDisplayFormat.FullyQualifiedFormat);
+            sb.AppendLine($"                        world.OnComponentSet<{typeName}>(entity);");
+        }
+
+        return sb;
     }
 }

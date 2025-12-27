@@ -74,6 +74,11 @@ public struct QueryMethod
     public IParameterSymbol EntityParameter { get; set; }
     
     /// <summary>
+    /// The return type for the query method.
+    /// </summary>
+    public ITypeSymbol ReturnType { get; set; }
+    
+    /// <summary>
     /// All parameters within the query method, not only the components. Also Entity and Data annotated ones.
     /// <remarks>public void Query([Data] float time, in Entity entity, ...);</remarks>
     /// </summary>
