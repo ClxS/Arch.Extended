@@ -37,7 +37,7 @@ public class QueryGenerator : IIncrementalGenerator
     {
         if (!_classToMethods.TryGetValue(methodSymbol.ContainingSymbol, out var list))
         {
-            list = new List<IMethodSymbol>();
+            list = [];
             _classToMethods[methodSymbol.ContainingSymbol] = list;
         }
         list.Add(methodSymbol);
