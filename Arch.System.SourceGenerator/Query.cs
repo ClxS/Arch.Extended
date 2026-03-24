@@ -364,15 +364,20 @@ public static class QueryUtils
     public static StringBuilder AppendParallelQueryMethod(this StringBuilder sb, ref QueryMethod queryMethod)
     {
         var staticModifier = queryMethod.IsStatic ? "static" : "";
-        
-        // Generate code 
+
+        // For non-static methods, the job struct needs a reference to the containing instance
+        var instanceCtorParam = queryMethod.IsStatic ? "" : $", {queryMethod.ClassName} instance";
+        var instanceCtorArg = queryMethod.IsStatic ? "" : ", this";
+        var instanceCallPrefix = queryMethod.IsStatic ? "" : "instance.";
+
+        // Generate code
         var jobParameters = new StringBuilder().JobParameters(queryMethod.Parameters);
         var jobParametersAssigment = new StringBuilder().JobParametersAssigment(queryMethod.Parameters);
         var data = new StringBuilder().DataParameters(queryMethod.Parameters);
         var getFirstElements = new StringBuilder().GetFirstElements(queryMethod.Components);
         var getComponents = new StringBuilder().GetComponents(queryMethod.Components);
         var insertParams = new StringBuilder().InsertParams(queryMethod.Parameters);
-        
+
         var allTypeArray = new StringBuilder().GetTypeArray(queryMethod.AllFilteredTypes);
         var anyTypeArray = new StringBuilder().GetTypeArray(queryMethod.AnyFilteredTypes);
         var noneTypeArray = new StringBuilder().GetTypeArray(queryMethod.NoneFilteredTypes);
@@ -384,7 +389,7 @@ public static class QueryUtils
         {
             StringBuilder updatedProps = InsertNotificationEventParams(queryMethod.Parameters);
             callHandle = $$"""
-                                               QueryMutationResult result = {{queryMethod.MethodName}}({{insertParams}});
+                                               QueryMutationResult result = {{instanceCallPrefix}}{{queryMethod.MethodName}}({{insertParams}});
                                                if (result == QueryMutationResult.Mutation)
                                                {
                            {{updatedProps}}
@@ -394,11 +399,11 @@ public static class QueryUtils
         else
         {
             callHandle = $"""
-                                              {queryMethod.MethodName}({insertParams});
+                                              {instanceCallPrefix}{queryMethod.MethodName}({insertParams});
                           """;
         }
-        
-        var template = 
+
+        var template =
             $$"""
             #nullable enable
             using System;
@@ -411,7 +416,7 @@ public static class QueryUtils
             using Component = Arch.Core.Component;
             {{(!queryMethod.IsGlobalNamespace ? $"namespace {queryMethod.Namespace} {{" : "")}}
                 partial class {{queryMethod.ClassName}}{
-                    
+
                     private {{staticModifier}} QueryDescription {{queryMethod.MethodName}}_QueryDescription = new QueryDescription(
                         all: {{allTypeArray}},
                         any: {{anyTypeArray}},
@@ -422,15 +427,15 @@ public static class QueryUtils
                     private {{staticModifier}} World? _{{queryMethod.MethodName}}_Initialized;
                     private {{staticModifier}} Query? _{{queryMethod.MethodName}}_Query;
 
-                    private struct {{queryMethod.MethodName}}QueryJobChunk(World world) : IChunkJob 
+                    private struct {{queryMethod.MethodName}}QueryJobChunk(World world{{instanceCtorParam}}) : IChunkJob
                     {
                         {{jobParameters}}
-                        
+
                         public void Execute(ref Chunk chunk) {
-                        
+
                             {{(queryMethod.IsEntityQuery ? "ref var entityFirstElement = ref chunk.Entity(0);" : "")}}
                             {{getFirstElements}}
-                    
+
                             foreach(var entityIndex in chunk)
                             {
                                 {{(queryMethod.IsEntityQuery ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
@@ -439,16 +444,16 @@ public static class QueryUtils
                             }
                         }
                     }
-            
+
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     public {{staticModifier}} void {{queryMethod.MethodName}}Query(World world {{data}}){
-                     
+
                         if(!ReferenceEquals(_{{queryMethod.MethodName}}_Initialized, world)) {
                             _{{queryMethod.MethodName}}_Query = world.Query(in {{queryMethod.MethodName}}_QueryDescription);
                             _{{queryMethod.MethodName}}_Initialized = world;
                         }
-                        
-                        var job = new {{queryMethod.MethodName}}QueryJobChunk(world) { {{jobParametersAssigment}} };
+
+                        var job = new {{queryMethod.MethodName}}QueryJobChunk(world{{instanceCtorArg}}) { {{jobParametersAssigment}} };
                         world.InlineParallelChunkQuery(in {{queryMethod.MethodName}}_QueryDescription, job);
                     }
                 }
