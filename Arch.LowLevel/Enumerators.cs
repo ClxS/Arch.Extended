@@ -7,7 +7,7 @@ namespace Arch.LowLevel;
 ///     The <see cref="Enumerator{T}"/> is a basic implementation of an enumerator for the <see cref="Array{T}"/>>.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public unsafe ref struct Enumerator<T> 
+public ref struct Enumerator<T>
 {
     private readonly Span<T> _list;
     private readonly int _count;
